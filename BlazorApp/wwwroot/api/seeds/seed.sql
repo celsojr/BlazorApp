@@ -1,5 +1,5 @@
 -- --------------------------------------------------------
--- Host:                         C:\Users\sabit\Downloads\things.sqlite3
+-- Host:                         $USERPROFILE\Downloads\Things.sqlite3
 -- Server version:               3.39.4
 -- Server OS:                    
 -- HeidiSQL Version:             12.5.0.6677
@@ -26,9 +26,9 @@ CREATE TABLE IF NOT EXISTS "Categories" (
 -- Dumping data for table things.Categories: 3 rows
 /*!40000 ALTER TABLE "Categories" DISABLE KEYS */;
 INSERT INTO "Categories" ("Id", "Name") VALUES
-	(1, 'Electronics'),
-	(2, 'Books'),
-	(3, 'Clothing');
+    (1, 'Electronics'),
+    (2, 'Books'),
+    (3, 'Clothing');
 /*!40000 ALTER TABLE "Categories" ENABLE KEYS */;
 
 -- Dumping structure for table things.Tags
@@ -40,13 +40,13 @@ CREATE TABLE IF NOT EXISTS "Tags" (
 -- Dumping data for table things.Tags: 3 rows
 /*!40000 ALTER TABLE "Tags" DISABLE KEYS */;
 INSERT INTO "Tags" ("Id", "Name") VALUES
-	(1, 'new'),
-	(2, 'popular'),
-	(3, 'sale'),
-	(4, 'limited edition'),
-	(5, 'wasm'),
-	(6, 'blazor'),
-	(7, 'sqlite');
+    (1, 'new'),
+    (2, 'popular'),
+    (3, 'sale'),
+    (4, 'limited edition'),
+    (5, 'wasm'),
+    (6, 'blazor'),
+    (7, 'sqlite');
 /*!40000 ALTER TABLE "Tags" ENABLE KEYS */;
 
 -- Dumping structure for table things.Things
@@ -64,10 +64,10 @@ CREATE TABLE IF NOT EXISTS "Things" (
 -- Dumping data for table things.Things: 4 rows
 /*!40000 ALTER TABLE "Things" DISABLE KEYS */;
 INSERT INTO "Things" ("Id", "Name", "Description", "Price", "CreatedDate", "CategoryId", "TagsString") VALUES
-	(1, 'Smartphone', 'A smartphone with 5G capability', 699.99, CURRENT_TIMESTAMP, 1, 'new,popular'),
-	(2, 'Novel', 'A mystery novel by a best-selling author', 14.99, CURRENT_TIMESTAMP, 2, 'sale'),
-	(3, 'T-Shirt', 'A comfortable cotton t-shirt', 19.99, CURRENT_TIMESTAMP, 3, 'limited edition'),
-	(4, 'Blazor Wasm', 'Blazor WebAssembly Experiments', '544.0', CURRENT_TIMESTAMP, 2, 'wasm,blazor,sqlite');
+    (1, 'Smartphone', 'A smartphone with 5G capability', 699.99, CURRENT_TIMESTAMP, 1, 'new,popular'),
+    (2, 'Novel', 'A mystery novel by a best-selling author', 14.99, CURRENT_TIMESTAMP, 2, 'sale'),
+    (3, 'T-Shirt', 'A comfortable cotton t-shirt', 19.99, CURRENT_TIMESTAMP, 3, 'limited edition'),
+    (4, 'Blazor Wasm', 'Blazor WebAssembly Experiments', 544.0, CURRENT_TIMESTAMP, 2, 'wasm,blazor,sqlite');
 /*!40000 ALTER TABLE "Things" ENABLE KEYS */;
 
 -- Dumping structure for table things.ThingTags
@@ -82,9 +82,9 @@ CREATE TABLE IF NOT EXISTS "ThingTags" (
 -- Dumping data for table things.ThingTags: 3 rows
 /*!40000 ALTER TABLE "ThingTags" DISABLE KEYS */;
 INSERT INTO "ThingTags" ("ThingId", "TagId") VALUES
-	(4, 5),
-	(4, 6),
-	(4, 7);
+    (4, 5),
+    (4, 6),
+    (4, 7);
 /*!40000 ALTER TABLE "ThingTags" ENABLE KEYS */;
 
 /*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;

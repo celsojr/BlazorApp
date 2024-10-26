@@ -17,7 +17,7 @@ namespace BlazorApp
             builder.Services.AddScoped<NavigationService>();
 
             builder.Services.AddSqliteWasmDbContextFactory<ThingContext>(
-                opts => opts.UseSqlite("Data Source=things.sqlite3"));
+                opts => opts.UseSqlite("Data Source=Things.sqlite3"));
 
             builder.Services.AddScoped(sp => new HttpClient() { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
