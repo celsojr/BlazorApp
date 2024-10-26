@@ -6,24 +6,24 @@
 
 <PageTitle>Things</PageTitle>
 
-<div class="container mt-4">
+<div class="container mb-5">
     <h2>Add a New Thing</h2>
-    <div class="mb-3">
-        <label for="thingName" class="form-label">Type a new thing name:</label>
+    <div class="col-5 mb-3">
+        <label for="thingName" class="form-label">Thing name:</label>
         <input id="thingName" class="form-control" @bind="newThing.Name" disabled="@busy" />
     </div>
 
-    <div class="mb-3">
-        <label for="thingDescription" class="form-label">Type a description:</label>
+    <div class="col-5 mb-3">
+        <label for="thingDescription" class="form-label">Description:</label>
         <input id="thingDescription" class="form-control" @bind="newThing.Description" disabled="@busy" />
     </div>
 
-    <div class="mb-3">
+    <div class="col-5 mb-3">
         <label for="thingPrice" class="form-label">Enter a price:</label>
         <input id="thingPrice" type="number" class="form-control" @bind="newThing.Price" disabled="@busy" />
     </div>
 
-    <div class="mb-3">
+    <div class="col-5 mb-3">
         <label for="thingCategory" class="form-label">Select a category:</label>
         <select id="thingCategory" class="form-select" @bind="newThing.CategoryId" disabled="@busy">
             <option value="">Select a category</option> <!-- Placeholder option -->
@@ -35,19 +35,19 @@
     </div>
 
     <!-- Tags Section -->
-    <div class="mb-3">
+    <div class="col-5 mb-3">
         <label for="tagInput" class="form-label">Add tags:</label>
         <div class="input-group">
-            <input id="tagInput" class="form-control" @bind="tagInput" disabled="@busy" placeholder="Type a tag and press Enter" @onkeypress="OnTagInputKeyPress" />
+            <input id="tagInput" class="form-control" @bind="tagInput" disabled="@busy" placeholder="Type a tag and press Enter" @onkeydown="OnTagInputKeyPress" />
             <button class="btn btn-outline-secondary" @onclick="AddTag" disabled="@busy">Add Tag</button>
         </div>
-        <div class="mt-2">
+        <div class="col-5 mt-2">
             @if (newThing.Tags != null && newThing.Tags.Any())
             {
                 foreach (var tag in newThing.Tags)
                 {
                     <span class="badge bg-primary me-1">
-                        @tag <button class="btn-close" @onclick="() => RemoveTag(tag)" aria-label="Remove"></button>
+                        @tag <button class="btn-close bg-info" @onclick="() => RemoveTag(tag)" aria-label="Remove"></button>
                     </span>
                 }
             }
@@ -57,46 +57,47 @@
     <button class="btn btn-primary" @onclick="AddThingAsync" disabled="@busy">Add Thing</button>
 </div>
 
-@if (@busy)
-{
-    <div class="alert alert-info">💾 Scanning a floppy disk...</div>
-}
-else
-{
-    if (things.Length < 1)
+<div class="container mb-5">
+    @if (@busy)
     {
-        <p>I see no-thing.</p>
+        <div class="alert alert-info">💾 Scanning a floppy disk...</div>
     }
     else
     {
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Description</th>
-                    <th>Price</th>
-                    <th>Created Date</th>
-                    <th>Category</th>
-                    <th>Tags</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var thing in things)
-                {
+        if (things.Length < 1)
+        {
+            <p>I see no-thing.</p>
+        }
+        else
+        {
+            <table class="table table-striped">
+                <thead>
                     <tr>
-                        <td>@thing.Name</td>
-                        <td>@thing.Description</td>
-                        <td>@($"{thing.Price:C}")</td>
-                        <td>@thing.CreatedDate.ToString("yyyy-MM-dd")</td>
-                        <td>@(thing.Category?.Name ?? "Uncategorized")</td>
-                        <td>@(string.Join(", ", thing.Tags))</td>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Price</th>
+                        <th>Created Date</th>
+                        <th>Category</th>
+                        <th>Tags</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var thing in things)
+                    {
+                        <tr>
+                            <td>@thing.Name</td>
+                            <td>@thing.Description</td>
+                            <td class="text-end">@($"${thing.Price:0.00}")</td>
+                            <td>@thing.CreatedDate.ToString("yyyy-MM-dd")</td>
+                            <td>@(thing.Category?.Name ?? "Uncategorized")</td>
+                            <td>@(string.Join(", ", thing.Tags))</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
     }
-}
-
+</div>
 @* Download backup:
 <BackupLink @ref="bl" DbContextType="typeof(ThingContext)" /> *@
 
@@ -130,7 +131,7 @@ else
         busy = false;
         StateHasChanged();
     }
- 
+
     private async Task LoadCategoriesAsync()
     {
         using var ctx = await Factory.CreateDbContextAsync();
@@ -141,15 +142,28 @@ else
     {
         if (!string.IsNullOrWhiteSpace(newThing.Name) && newThing.Price > 0 && newThing.CategoryId > 0)
         {
-            using var ctx = await Factory.CreateDbContextAsync();
-            newThing.CreatedDate = DateTime.Now;  // Set the current date and time
-
-            // Save tags to the newThing object
-            newThing.ThingTags = newThing.Tags.Select(tag => new ThingTag { Tag = new Tag { Name = tag } }).ToList();
-            ctx.Things.Add(newThing);
             busy = true;
+
+            using var ctx = await Factory.CreateDbContextAsync();
+            newThing.CreatedDate = DateTime.Now;
+
+            var thingTags = new List<ThingTag>();
+            foreach (var tagName in newThing.Tags)
+            {
+                var existingTag = await ctx.Tags.FirstOrDefaultAsync(t => t.Name == tagName);
+                var tag = existingTag ?? new Tag { Name = tagName };
+
+                thingTags.Add(new ThingTag { Tag = tag });
+            }
+
+            newThing.ThingTags = thingTags;
+
+            ctx.Things.Add(newThing);
+
             await ctx.SaveChangesAsync();
-            newThing = new Thing();  // Reset the newThing object for the next input
+
+            newThing = new Thing();
+
             busy = false;
             await RefreshUiAsync();
         }
@@ -159,21 +173,21 @@ else
         }
     }
 
+
     private void AddTag()
     {
         if (!string.IsNullOrWhiteSpace(tagInput))
         {
-            if (!newThing.Tags.Contains(tagInput.Trim()))
-            {
-                newThing.Tags.Add(tagInput.Trim());
-                tagInput = string.Empty;
-            }
+            newThing.AddTag(tagInput);
+            tagInput = string.Empty;
+
+            StateHasChanged();
         }
     }
 
     private void RemoveTag(string tag)
     {
-        newThing.Tags.Remove(tag);
+        newThing.RemoveTag(tag);
     }
 
     private void OnTagInputKeyPress(KeyboardEventArgs e)
@@ -183,4 +197,5 @@ else
             AddTag();
         }
     }
+
 }
