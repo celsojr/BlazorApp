@@ -1,7 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Internal;
-using SqliteWasmHelper;
-using System.Net.Http;
+﻿using SqliteWasmHelper;
+using Microsoft.EntityFrameworkCore;
 
 namespace BlazorApp.Data
 {
@@ -20,13 +18,11 @@ namespace BlazorApp.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Define one-to-many relationship
             modelBuilder.Entity<Category>()
                 .HasMany(c => c.Things)
                 .WithOne(t => t.Category)
                 .HasForeignKey(t => t.CategoryId);
 
-            // Define many-to-many relationship
             modelBuilder.Entity<ThingTag>()
                 .HasKey(tt => new { tt.ThingId, tt.TagId });
 
@@ -45,7 +41,7 @@ namespace BlazorApp.Data
 
         public async Task SeedDataAsync(ISqliteWasmDbContextFactory<ThingContext> contextFactory, HttpClient httpClient)
         {
-            var seedFiles = new[] { "CreateTables.sql", "CategorySeed.sql", "TagSeed.sql", "ThingSeed.sql" };
+            var seedFiles = new[] { "seed.sql" }; // Add more files if needed
 
             foreach (var file in seedFiles)
             {

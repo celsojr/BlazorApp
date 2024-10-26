@@ -23,11 +23,9 @@ namespace BlazorApp
 
             var host = builder.Build();
 
-            // Resolve the factory and create an instance to seed data
             var dbContextFactory = host.Services.GetRequiredService<ISqliteWasmDbContextFactory<ThingContext>>();
             var httpClient = host.Services.GetRequiredService<HttpClient>();
 
-            // Create a new ThingContext for seeding
             using var ctx = await dbContextFactory.CreateDbContextAsync();
             await ctx.SeedDataAsync(dbContextFactory, httpClient);
 

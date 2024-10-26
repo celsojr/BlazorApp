@@ -2,6 +2,7 @@
 @using BlazorApp.Data
 @using SqliteWasmHelper
 @using Microsoft.EntityFrameworkCore
+@inject IJSRuntime JS
 @inject ISqliteWasmDbContextFactory<ThingContext> Factory
 
 <PageTitle>Things</PageTitle>
@@ -26,7 +27,7 @@
     <div class="col-5 mb-3">
         <label for="thingCategory" class="form-label">Select a category:</label>
         <select id="thingCategory" class="form-select" @bind="newThing.CategoryId" disabled="@busy">
-            <option value="">Select a category</option> <!-- Placeholder option -->
+            <option value="" selected>Select a category</option> <!-- Placeholder option -->
             @foreach (var category in categories)
             {
                 <option value="@category.Id">@category.Name</option>
@@ -97,9 +98,13 @@
             </table>
         }
     }
+
+    @* Download backup:
+    <BackupLink @ref="bl" DbContextType="typeof(ThingContext)" /> *@
+
+    <a href="javascript:;" @onclick="DownloadDbAsync">Download backup</a>
 </div>
-@* Download backup:
-<BackupLink @ref="bl" DbContextType="typeof(ThingContext)" /> *@
+
 
 @code {
     private bool busy;
@@ -173,7 +178,6 @@
         }
     }
 
-
     private void AddTag()
     {
         if (!string.IsNullOrWhiteSpace(tagInput))
@@ -196,6 +200,11 @@
         {
             AddTag();
         }
+    }
+
+    async Task DownloadDbAsync()
+    {
+        await JS.InvokeVoidAsync("fileSystemAccess.downloadSqliteFile");
     }
 
 }

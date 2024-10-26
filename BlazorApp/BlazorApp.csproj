@@ -7,12 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="wwwroot\api\seeds\CategorySeed.sql" />
-    <None Include="wwwroot\api\seeds\TagSeed.sql" />
-    <None Include="wwwroot\api\seeds\ThingSeed.sql" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Bogus" Version="35.6.1" />
     <PackageReference Include="LoremNET" Version="2.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.8" />
