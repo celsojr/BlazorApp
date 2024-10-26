@@ -14,9 +14,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Add .nojekyll file
-        run: touch release/wwwroot/.nojekyll
-
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v4
         with:
@@ -36,6 +33,9 @@ jobs:
 
       - name: copy index.html to 404.html
         run: cp release/wwwroot/index.html release/wwwroot/404.html
+
+      - name: Add .nojekyll file
+        run: touch release/wwwroot/.nojekyll
 
       - name: Commit wwwroot to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
