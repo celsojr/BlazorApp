@@ -1,7 +1,9 @@
 ﻿@page "/thing"
+@using Bogus
 @using BlazorApp.Data
 @using SqliteWasmHelper
 @using Microsoft.EntityFrameworkCore
+@using System.Text.Json
 @inject IJSRuntime JS
 @inject ISqliteWasmDbContextFactory<ThingContext> Factory
 
@@ -71,24 +73,26 @@
         }
         else
         {
-            <table class="table table-striped">
+            <table class="table table-striped mb-2">
                 <thead>
                     <tr>
+                        <th>#</th>
                         <th>Name</th>
                         <th>Description</th>
                         <th>Price</th>
-                        <th>Created Date</th>
-                        <th>Category</th>
-                        <th>Tags</th>
+                        <th width="100">Created</th>
+                        <th width="150">Category</th>
+                        <th width="200">Tags</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var thing in things)
                     {
                         <tr>
+                            <td class="text-end">@thing.Id.ToString("D4")</td>
                             <td>@thing.Name</td>
                             <td>@thing.Description</td>
-                            <td class="text-end">@($"${thing.Price:0.00}")</td>
+                            <td class="text-end">@thing.Price.ToString("0.00")</td>
                             <td>@thing.CreatedDate.ToString("yyyy-MM-dd")</td>
                             <td>@(thing.Category?.Name ?? "Uncategorized")</td>
                             <td>@(string.Join(", ", thing.Tags))</td>
@@ -96,6 +100,12 @@
                     }
                 </tbody>
             </table>
+
+            <div class="d-flex justify-content-between align-items-center mb-5">
+                <button class="btn btn-primary" @onclick="PreviousPage" disabled="@(!CanGoToPreviousPage)">Previous</button>
+                <span>Page @currentPage of @totalPages</span>
+                <button class="btn btn-primary" @onclick="NextPage" disabled="@(!CanGoToNextPage)">Next</button>
+            </div>
         }
     }
 
@@ -105,7 +115,6 @@
     <a href="javascript:;" @onclick="DownloadDbAsync">Download backup</a>
 </div>
 
-
 @code {
     private bool busy;
     // private BackupLink bl = null!;
@@ -114,25 +123,86 @@
     private Category[] categories = Array.Empty<Category>();
     private string tagInput = string.Empty;
 
+    private const int PageSize = 10;
+    private int currentPage = 1;
+
+    private int totalPages;
+
+    private bool CanGoToPreviousPage => currentPage > 1;
+    private bool CanGoToNextPage => currentPage < totalPages;
+
     protected override async Task OnInitializedAsync()
     {
+        busy = true;
+
+        using var ctx = await Factory.CreateDbContextAsync();
+
+        await foreach (var thing in GenerateThingDataAsync(5_000))
+        {
+            ctx.Things.Add(thing);
+        }
+
+        await ctx.SaveChangesAsync();
+
+        // var generatedThings = new List<Thing>();
+
+        // await foreach (var thing in GenerateThingDataAsync(10))
+        // {
+        //     generatedThings.Add(thing);
+        // }
+
+        // var jsonData = JsonSerializer.Serialize(generatedThings);
+        // await JS.InvokeVoidAsync("fileSystemAccess.consoleTable", jsonData);
+
+        busy = false;
+
         await RefreshUiAsync();
+
         await base.OnInitializedAsync();
+    }
+
+    private static async IAsyncEnumerable<Thing> GenerateThingDataAsync(int count)
+    {
+        var availableTags = new List<string> { "new", "popular", "sale", "limited edition", "wasm", "blazor", "sqlite" };
+
+        var faker = new Faker<Thing>()
+            .RuleFor(t => t.Name, f => f.Commerce.ProductName())
+            .RuleFor(t => t.Description, f => f.Commerce.ProductDescription())
+            .RuleFor(t => t.Price, f => f.Finance.Amount(10, 1000))
+            .RuleFor(t => t.CreatedDate, f => f.Date.Past(2))
+            .RuleFor(t => t.CategoryId, f => f.Random.Int(1, 3))
+            .RuleFor(t => t.TagsString, f =>
+            {
+                var tags = f.PickRandom(availableTags, f.Random.Int(1, 3));
+                return string.Join(",", tags);
+            });
+
+        for (int i = 0; i < count; i++)
+        {
+            yield return faker.Generate();
+            await Task.Yield(); // Yield control to allow streaming
+        }
     }
 
     private async Task RefreshUiAsync()
     {
         using var ctx = await Factory.CreateDbContextAsync();
-        busy = true;
+        // busy = true;
+
         things = await ctx.Things
             .Include(t => t.Category)
             .Include(t => t.ThingTags)
                 .ThenInclude(tt => tt.Tag)
+            .OrderByDescending(t => t.Id)
+            .Skip((currentPage - 1) * PageSize)
+            .Take(PageSize)
             .ToArrayAsync();
 
         await LoadCategoriesAsync();
 
-        // await bl.RefreshAsync();
+        var totalItems = await ctx.Things.CountAsync();
+        totalPages = (int)Math.Ceiling(totalItems / (double)PageSize);
+
         busy = false;
         StateHasChanged();
     }
@@ -205,6 +275,24 @@
     async Task DownloadDbAsync()
     {
         await JS.InvokeVoidAsync("fileSystemAccess.downloadSqliteFile");
+    }
+
+    private async Task PreviousPage()
+    {
+        if (CanGoToPreviousPage)
+        {
+            currentPage--;
+            await RefreshUiAsync();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (CanGoToNextPage)
+        {
+            currentPage++;
+            await RefreshUiAsync();
+        }
     }
 
 }

@@ -44,6 +44,10 @@
         }
 
         window.fileSystemAccess = {
+            async consoleTable(jsonData) {
+                const parsedData = JSON.parse(jsonData);
+                console.table(parsedData);
+            },
             async saveTextFile(data, fileName) {
                 try {
                     const opts = {
@@ -91,7 +95,7 @@
             async downloadSqliteFile() {
                 try {
                     const cache = await caches.open('SqliteWasmHelper');
-                    const response = await cache.match('/data/cache/things.sqlite3');
+                    const response = await cache.match('/data/cache/Things.sqlite3');
 
                     if (!response) {
                         throw new Error("SQLite file not found in cache.");
@@ -102,7 +106,7 @@
 
                     const link = document.createElement('a');
                     link.href = url;
-                    link.download = 'things.sqlite3';
+                    link.download = 'Things.sqlite3';
 
                     document.body.appendChild(link);
                     link.click();
