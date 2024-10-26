@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using SqliteWasmHelper;
 
 namespace BlazorApp
-{
+{https://github.com/celsojr/BlazorApp/pull/3/conflict?name=BlazorApp%252Fwwwroot%252Fapi%252Fseeds%252Fseed.sql&base_oid=537402e333f8fd0923d763d1e038d4f2c2b4b546&head_oid=b3dd561faf93e60a93c725aa811f8f62923defea
     public class Program
     {
         public static async Task Main(string[] args)
