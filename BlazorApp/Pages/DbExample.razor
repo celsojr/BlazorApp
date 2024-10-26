@@ -1,0 +1,210 @@
+﻿@page "/thing"
+@using BlazorApp.Data
+@using SqliteWasmHelper
+@using Microsoft.EntityFrameworkCore
+@inject IJSRuntime JS
+@inject ISqliteWasmDbContextFactory<ThingContext> Factory
+
+<PageTitle>Things</PageTitle>
+
+<div class="container mb-5">
+    <h2>Add a New Thing</h2>
+    <div class="col-5 mb-3">
+        <label for="thingName" class="form-label">Thing name:</label>
+        <input id="thingName" class="form-control" @bind="newThing.Name" disabled="@busy" />
+    </div>
+
+    <div class="col-5 mb-3">
+        <label for="thingDescription" class="form-label">Description:</label>
+        <input id="thingDescription" class="form-control" @bind="newThing.Description" disabled="@busy" />
+    </div>
+
+    <div class="col-5 mb-3">
+        <label for="thingPrice" class="form-label">Enter a price:</label>
+        <input id="thingPrice" type="number" class="form-control" @bind="newThing.Price" disabled="@busy" />
+    </div>
+
+    <div class="col-5 mb-3">
+        <label for="thingCategory" class="form-label">Select a category:</label>
+        <select id="thingCategory" class="form-select" @bind="newThing.CategoryId" disabled="@busy">
+            <option value="" selected>Select a category</option> <!-- Placeholder option -->
+            @foreach (var category in categories)
+            {
+                <option value="@category.Id">@category.Name</option>
+            }
+        </select>
+    </div>
+
+    <!-- Tags Section -->
+    <div class="col-5 mb-3">
+        <label for="tagInput" class="form-label">Add tags:</label>
+        <div class="input-group">
+            <input id="tagInput" class="form-control" @bind="tagInput" disabled="@busy" placeholder="Type a tag and press Enter" @onkeydown="OnTagInputKeyPress" />
+            <button class="btn btn-outline-secondary" @onclick="AddTag" disabled="@busy">Add Tag</button>
+        </div>
+        <div class="col-5 mt-2">
+            @if (newThing.Tags != null && newThing.Tags.Any())
+            {
+                foreach (var tag in newThing.Tags)
+                {
+                    <span class="badge bg-primary me-1">
+                        @tag <button class="btn-close bg-info" @onclick="() => RemoveTag(tag)" aria-label="Remove"></button>
+                    </span>
+                }
+            }
+        </div>
+    </div>
+
+    <button class="btn btn-primary" @onclick="AddThingAsync" disabled="@busy">Add Thing</button>
+</div>
+
+<div class="container mb-5">
+    @if (@busy)
+    {
+        <div class="alert alert-info">💾 Scanning a floppy disk...</div>
+    }
+    else
+    {
+        if (things.Length < 1)
+        {
+            <p>I see no-thing.</p>
+        }
+        else
+        {
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Price</th>
+                        <th>Created Date</th>
+                        <th>Category</th>
+                        <th>Tags</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var thing in things)
+                    {
+                        <tr>
+                            <td>@thing.Name</td>
+                            <td>@thing.Description</td>
+                            <td class="text-end">@($"${thing.Price:0.00}")</td>
+                            <td>@thing.CreatedDate.ToString("yyyy-MM-dd")</td>
+                            <td>@(thing.Category?.Name ?? "Uncategorized")</td>
+                            <td>@(string.Join(", ", thing.Tags))</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+
+    @* Download backup:
+    <BackupLink @ref="bl" DbContextType="typeof(ThingContext)" /> *@
+
+    <a href="javascript:;" @onclick="DownloadDbAsync">Download backup</a>
+</div>
+
+
+@code {
+    private bool busy;
+    // private BackupLink bl = null!;
+    private Thing[] things = Array.Empty<Thing>();
+    private Thing newThing = new Thing();
+    private Category[] categories = Array.Empty<Category>();
+    private string tagInput = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshUiAsync();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task RefreshUiAsync()
+    {
+        using var ctx = await Factory.CreateDbContextAsync();
+        busy = true;
+        things = await ctx.Things
+            .Include(t => t.Category)
+            .Include(t => t.ThingTags)
+                .ThenInclude(tt => tt.Tag)
+            .ToArrayAsync();
+
+        await LoadCategoriesAsync();
+
+        // await bl.RefreshAsync();
+        busy = false;
+        StateHasChanged();
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        using var ctx = await Factory.CreateDbContextAsync();
+        categories = await ctx.Categories.ToArrayAsync();
+    }
+
+    private async Task AddThingAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(newThing.Name) && newThing.Price > 0 && newThing.CategoryId > 0)
+        {
+            busy = true;
+
+            using var ctx = await Factory.CreateDbContextAsync();
+            newThing.CreatedDate = DateTime.Now;
+
+            var thingTags = new List<ThingTag>();
+            foreach (var tagName in newThing.Tags)
+            {
+                var existingTag = await ctx.Tags.FirstOrDefaultAsync(t => t.Name == tagName);
+                var tag = existingTag ?? new Tag { Name = tagName };
+
+                thingTags.Add(new ThingTag { Tag = tag });
+            }
+
+            newThing.ThingTags = thingTags;
+
+            ctx.Things.Add(newThing);
+
+            await ctx.SaveChangesAsync();
+
+            newThing = new Thing();
+
+            busy = false;
+            await RefreshUiAsync();
+        }
+        else
+        {
+            // Handle validation errors, e.g., show a message to the user
+        }
+    }
+
+    private void AddTag()
+    {
+        if (!string.IsNullOrWhiteSpace(tagInput))
+        {
+            newThing.AddTag(tagInput);
+            tagInput = string.Empty;
+
+            StateHasChanged();
+        }
+    }
+
+    private void RemoveTag(string tag)
+    {
+        newThing.RemoveTag(tag);
+    }
+
+    private void OnTagInputKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            AddTag();
+        }
+    }
+
+    async Task DownloadDbAsync()
+    {
+        await JS.InvokeVoidAsync("fileSystemAccess.downloadSqliteFile");
+    }
+
+}

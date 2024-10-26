@@ -87,7 +87,35 @@
                     console.error('Error saving file:', err);
                     return false;
                 }
+            },
+            async downloadSqliteFile() {
+                try {
+                    const cache = await caches.open('SqliteWasmHelper');
+                    const response = await cache.match('/data/cache/things.sqlite3');
+
+                    if (!response) {
+                        throw new Error("SQLite file not found in cache.");
+                    }
+
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'things.sqlite3';
+
+                    document.body.appendChild(link);
+                    link.click();
+
+                    URL.revokeObjectURL(url);
+                    document.body.removeChild(link);
+
+                    console.log("File downloaded successfully.");
+                } catch (error) {
+                    console.error(error);
+                }
             }
+
         };
 
     </script>
