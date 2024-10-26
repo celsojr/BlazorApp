@@ -19,9 +19,19 @@ namespace BlazorApp
             builder.Services.AddSqliteWasmDbContextFactory<ThingContext>(
                 opts => opts.UseSqlite("Data Source=things.sqlite3"));
 
-            builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+            builder.Services.AddScoped(sp => new HttpClient() { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
-            await builder.Build().RunAsync();
+            var host = builder.Build();
+
+            // Resolve the factory and create an instance to seed data
+            var dbContextFactory = host.Services.GetRequiredService<ISqliteWasmDbContextFactory<ThingContext>>();
+            var httpClient = host.Services.GetRequiredService<HttpClient>();
+
+            // Create a new ThingContext for seeding
+            using var ctx = await dbContextFactory.CreateDbContextAsync();
+            await ctx.SeedDataAsync(dbContextFactory, httpClient);
+
+            await host.RunAsync();
         }
     }
 }

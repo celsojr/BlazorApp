@@ -1,23 +1,73 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Internal;
+using SqliteWasmHelper;
+using System.Net.Http;
 
 namespace BlazorApp.Data
 {
     public class ThingContext : DbContext
     {
-        public ThingContext(DbContextOptions<ThingContext> opts) : base(opts)
+        public DbSet<Thing> Things { get; set; } = null!;
+        public DbSet<Category> Categories { get; set; } = null!;
+        public DbSet<Tag> Tags { get; set; } = null!;
+        public DbSet<ThingTag> ThingTags { get; set; } = null!;
+
+        public ThingContext(DbContextOptions<ThingContext> options)
+            : base(options)
         {
 
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<Thing>().HasData(
-                new Thing() { Id = 1, Name = "One thing" }
-            );
+            // Define one-to-many relationship
+            modelBuilder.Entity<Category>()
+                .HasMany(c => c.Things)
+                .WithOne(t => t.Category)
+                .HasForeignKey(t => t.CategoryId);
+
+            // Define many-to-many relationship
+            modelBuilder.Entity<ThingTag>()
+                .HasKey(tt => new { tt.ThingId, tt.TagId });
+
+            modelBuilder.Entity<ThingTag>()
+                .HasOne(tt => tt.Thing)
+                .WithMany(t => t.ThingTags)
+                .HasForeignKey(tt => tt.ThingId);
+
+            modelBuilder.Entity<ThingTag>()
+                .HasOne(tt => tt.Tag)
+                .WithMany(t => t.ThingTags)
+                .HasForeignKey(tt => tt.TagId);
 
             base.OnModelCreating(modelBuilder);
         }
 
-        public DbSet<Thing> Things { get; set; } = null!;
+        public async Task SeedDataAsync(ISqliteWasmDbContextFactory<ThingContext> contextFactory, HttpClient httpClient)
+        {
+            var seedFiles = new[] { "CreateTables.sql", "CategorySeed.sql", "TagSeed.sql", "ThingSeed.sql" };
+
+            foreach (var file in seedFiles)
+            {
+                try
+                {
+                    var response = await httpClient.GetAsync($"api/seeds/{file}");
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var sqlScript = await response.Content.ReadAsStringAsync();
+                        if (!string.IsNullOrWhiteSpace(sqlScript))
+                        {
+                            using var ctx = await contextFactory.CreateDbContextAsync();
+                            await ctx.Database.ExecuteSqlRawAsync(sqlScript);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error seeding {file}: {ex.Message}");
+                }
+            }
+        }
+
     }
 }

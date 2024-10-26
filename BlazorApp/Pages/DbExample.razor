@@ -6,9 +6,56 @@
 
 <PageTitle>Things</PageTitle>
 
-<p>Type some thing:</p>
-<input @bind="newThing" disabled="@busy" />&nbsp;
-<button @onclick="@(async () => await AddThingAsync())" disabled="@busy">Add</button>
+<div class="container mt-4">
+    <h2>Add a New Thing</h2>
+    <div class="mb-3">
+        <label for="thingName" class="form-label">Type a new thing name:</label>
+        <input id="thingName" class="form-control" @bind="newThing.Name" disabled="@busy" />
+    </div>
+
+    <div class="mb-3">
+        <label for="thingDescription" class="form-label">Type a description:</label>
+        <input id="thingDescription" class="form-control" @bind="newThing.Description" disabled="@busy" />
+    </div>
+
+    <div class="mb-3">
+        <label for="thingPrice" class="form-label">Enter a price:</label>
+        <input id="thingPrice" type="number" class="form-control" @bind="newThing.Price" disabled="@busy" />
+    </div>
+
+    <div class="mb-3">
+        <label for="thingCategory" class="form-label">Select a category:</label>
+        <select id="thingCategory" class="form-select" @bind="newThing.CategoryId" disabled="@busy">
+            <option value="">Select a category</option> <!-- Placeholder option -->
+            @foreach (var category in categories)
+            {
+                <option value="@category.Id">@category.Name</option>
+            }
+        </select>
+    </div>
+
+    <!-- Tags Section -->
+    <div class="mb-3">
+        <label for="tagInput" class="form-label">Add tags:</label>
+        <div class="input-group">
+            <input id="tagInput" class="form-control" @bind="tagInput" disabled="@busy" placeholder="Type a tag and press Enter" @onkeypress="OnTagInputKeyPress" />
+            <button class="btn btn-outline-secondary" @onclick="AddTag" disabled="@busy">Add Tag</button>
+        </div>
+        <div class="mt-2">
+            @if (newThing.Tags != null && newThing.Tags.Any())
+            {
+                foreach (var tag in newThing.Tags)
+                {
+                    <span class="badge bg-primary me-1">
+                        @tag <button class="btn-close" @onclick="() => RemoveTag(tag)" aria-label="Remove"></button>
+                    </span>
+                }
+            }
+        </div>
+    </div>
+
+    <button class="btn btn-primary" @onclick="AddThingAsync" disabled="@busy">Add Thing</button>
+</div>
 
 @if (@busy)
 {
@@ -22,23 +69,44 @@ else
     }
     else
     {
-        <ul>
-            @foreach (var thing in things)
-            {
-                <li>@thing.Name</li>
-            }
-        </ul>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Price</th>
+                    <th>Created Date</th>
+                    <th>Category</th>
+                    <th>Tags</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var thing in things)
+                {
+                    <tr>
+                        <td>@thing.Name</td>
+                        <td>@thing.Description</td>
+                        <td>@($"{thing.Price:C}")</td>
+                        <td>@thing.CreatedDate.ToString("yyyy-MM-dd")</td>
+                        <td>@(thing.Category?.Name ?? "Uncategorized")</td>
+                        <td>@(string.Join(", ", thing.Tags))</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     }
 }
 
-Download backup:
-<BackupLink @ref="bl" DbContextType="typeof(ThingContext)" />
+@* Download backup:
+<BackupLink @ref="bl" DbContextType="typeof(ThingContext)" /> *@
 
 @code {
     private bool busy;
-    private BackupLink bl = null!;
-    private string newThing = string.Empty;
+    // private BackupLink bl = null!;
     private Thing[] things = Array.Empty<Thing>();
+    private Thing newThing = new Thing();
+    private Category[] categories = Array.Empty<Category>();
+    private string tagInput = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -48,26 +116,71 @@ Download backup:
 
     private async Task RefreshUiAsync()
     {
-        Console.WriteLine("Called!");
         using var ctx = await Factory.CreateDbContextAsync();
         busy = true;
-        things = await ctx.Things.ToArrayAsync();
-        await bl.RefreshAsync();
+        things = await ctx.Things
+            .Include(t => t.Category)
+            .Include(t => t.ThingTags)
+                .ThenInclude(tt => tt.Tag)
+            .ToArrayAsync();
+
+        await LoadCategoriesAsync();
+
+        // await bl.RefreshAsync();
         busy = false;
         StateHasChanged();
+    }
+ 
+    private async Task LoadCategoriesAsync()
+    {
+        using var ctx = await Factory.CreateDbContextAsync();
+        categories = await ctx.Categories.ToArrayAsync();
     }
 
     private async Task AddThingAsync()
     {
-        if (!string.IsNullOrWhiteSpace(newThing))
+        if (!string.IsNullOrWhiteSpace(newThing.Name) && newThing.Price > 0 && newThing.CategoryId > 0)
         {
             using var ctx = await Factory.CreateDbContextAsync();
-            ctx.Things.Add(new Thing { Name = newThing });
+            newThing.CreatedDate = DateTime.Now;  // Set the current date and time
+
+            // Save tags to the newThing object
+            newThing.ThingTags = newThing.Tags.Select(tag => new ThingTag { Tag = new Tag { Name = tag } }).ToList();
+            ctx.Things.Add(newThing);
             busy = true;
             await ctx.SaveChangesAsync();
-            newThing = string.Empty;
+            newThing = new Thing();  // Reset the newThing object for the next input
             busy = false;
             await RefreshUiAsync();
+        }
+        else
+        {
+            // Handle validation errors, e.g., show a message to the user
+        }
+    }
+
+    private void AddTag()
+    {
+        if (!string.IsNullOrWhiteSpace(tagInput))
+        {
+            if (!newThing.Tags.Contains(tagInput.Trim()))
+            {
+                newThing.Tags.Add(tagInput.Trim());
+                tagInput = string.Empty;
+            }
+        }
+    }
+
+    private void RemoveTag(string tag)
+    {
+        newThing.Tags.Remove(tag);
+    }
+
+    private void OnTagInputKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            AddTag();
         }
     }
 }
