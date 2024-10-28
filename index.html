@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BlazorApp</title>
-    <base href="https://celsojr.github.io/BlazorApp/" />
+    <base href="https://celsojr-websters.github.io/BlazorApp/" />
     <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
     <link rel="stylesheet" href="css/app.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
@@ -47,6 +47,33 @@
             async consoleTable(jsonData) {
                 const parsedData = JSON.parse(jsonData);
                 console.table(parsedData);
+            },
+            async clearCache(cacheName) {
+                if ('caches' in window) {
+                    try {
+                        const hasCache = await caches.has(cacheName);
+                        if (hasCache) {
+                            const userConfirmed = window.confirm(`Delete the cache '${cacheName}'?`);
+                            if (userConfirmed) {
+                                await caches.delete(cacheName);
+                                console.log(`Cache '${cacheName}' has been deleted.`);
+                                return true;
+                            } else {
+                                console.log("Cache deletion was canceled by the user.");
+                                return false;
+                            }
+                        } else {
+                            console.log(`Cache '${cacheName}' not found.`);
+                            return false;
+                        }
+                    } catch (error) {
+                        console.error("Error clearing cache:", error);
+                        return false;
+                    }
+                } else {
+                    console.error("Cache storage is not available in this browser.");
+                    return false;
+                }
             },
             async saveTextFile(data, fileName) {
                 try {
@@ -121,6 +148,14 @@
             }
 
         };
+
+        document.addEventListener("DOMContentLoaded", () => {
+            clearCacheOnStartup('SqliteWasmHelper');
+        });
+
+        async function clearCacheOnStartup(cacheName) {
+            await window.fileSystemAccess.clearCache(cacheName);
+        }
 
     </script>
     <script src="_framework/blazor.webassembly.js"></script>
