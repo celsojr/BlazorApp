@@ -44,6 +44,37 @@
         }
 
         window.fileSystemAccess = {
+            async consoleTable(jsonData) {
+                const parsedData = JSON.parse(jsonData);
+                console.table(parsedData);
+            },
+            async clearCache(cacheName) {
+                if ('caches' in window) {
+                    try {
+                        const hasCache = await caches.has(cacheName);
+                        if (hasCache) {
+                            const userConfirmed = window.confirm(`Delete the cache '${cacheName}'?`);
+                            if (userConfirmed) {
+                                await caches.delete(cacheName);
+                                console.log(`Cache '${cacheName}' has been deleted.`);
+                                return true;
+                            } else {
+                                console.log("Cache deletion was canceled by the user.");
+                                return false;
+                            }
+                        } else {
+                            console.log(`Cache '${cacheName}' not found.`);
+                            return false;
+                        }
+                    } catch (error) {
+                        console.error("Error clearing cache:", error);
+                        return false;
+                    }
+                } else {
+                    console.error("Cache storage is not available in this browser.");
+                    return false;
+                }
+            },
             async saveTextFile(data, fileName) {
                 try {
                     const opts = {
@@ -87,8 +118,44 @@
                     console.error('Error saving file:', err);
                     return false;
                 }
+            },
+            async downloadSqliteFile() {
+                try {
+                    const cache = await caches.open('SqliteWasmHelper');
+                    const response = await cache.match('/data/cache/Things.sqlite3');
+
+                    if (!response) {
+                        throw new Error("SQLite file not found in cache.");
+                    }
+
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'Things.sqlite3';
+
+                    document.body.appendChild(link);
+                    link.click();
+
+                    URL.revokeObjectURL(url);
+                    document.body.removeChild(link);
+
+                    console.log("File downloaded successfully.");
+                } catch (error) {
+                    console.error(error);
+                }
             }
+
         };
+
+        document.addEventListener("DOMContentLoaded", () => {
+            clearCacheOnStartup('SqliteWasmHelper');
+        });
+
+        async function clearCacheOnStartup(cacheName) {
+            await window.fileSystemAccess.clearCache(cacheName);
+        }
 
     </script>
     <script src="_framework/blazor.webassembly.js"></script>
