@@ -1,1 +1,3 @@
 # BlazorApp
+
+Simple experiments
